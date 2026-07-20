@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vizim</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#FF6A2B">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#FFFDFB; --navy:#16233F; --orange:#FF6A2B; --orange-deep:#E8491C; --orange-light:#FFB088;
+    --peach-a:#FFF1E8; --peach-b:#FFDDC8; --muted:#8890A0; --green:#25D366; --red:#E44B4B;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{ height:100%; }
+  body{ background:var(--bg); color:var(--navy); font-family:'Nunito', sans-serif; position:relative; overflow-x:hidden; }
+  .blob{ position:fixed; border-radius:50%; filter:blur(50px); z-index:0; pointer-events:none; }
+  .blob1{ width:280px; height:280px; background:#FFD9C2; top:-90px; right:-100px; opacity:.7; }
+  .blob2{ width:220px; height:220px; background:#FFE9DD; bottom:80px; left:-100px; opacity:.8; }
+
+  .app{ max-width:480px; margin:0 auto; min-height:100vh; position:relative; }
+  .screen{ display:none; padding:36px 22px 90px; position:relative; z-index:1; animation:fade .25s ease; }
+  .screen.active{ display:block; }
+  @keyframes fade{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .topbar{ display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+  .back-btn{ width:38px; height:38px; border-radius:50%; background:#fff; border:1.5px solid #FFE1CC; flex-shrink:0; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px -4px #FF6A2B40; cursor:pointer; }
+  .topbar-title{ font-family:'Baloo 2', sans-serif; font-weight:700; font-size:20px; }
+  .topbar-sub{ font-size:12px; color:var(--muted); font-weight:700; }
+
+  .search{ display:flex; align-items:center; gap:10px; background:#fff; border-radius:30px; padding:9px 9px 9px 20px; box-shadow:0 14px 30px -14px #FF6A2B40, 0 3px 10px #16233F10; border:1.5px solid #FFF0E6; margin-bottom:18px; }
+  .search input{ border:none; outline:none; flex:1; font-size:14.5px; color:var(--navy); font-weight:600; background:transparent; width:100%; }
+  .search input::placeholder{ color:#C3C8D4; font-weight:600; }
+  .search svg{ color:#C3C8D4; flex-shrink:0; }
+  .empty{ text-align:center; color:var(--muted); font-weight:700; font-size:13.5px; padding:30px 10px; }
+
+  .search-wrap{ position:relative; }
+  .search-results{ position:absolute; top:calc(100% + 6px); left:0; right:0; background:#fff; border-radius:20px; border:1.5px solid #FFE1CC; box-shadow:0 20px 40px -16px #16233F40; overflow:hidden; z-index:20; max-height:300px; overflow-y:auto; }
+  .search-result-item{ display:flex; align-items:center; gap:12px; padding:12px 16px; cursor:pointer; border-bottom:1px solid #FBF3EC; }
+  .search-result-item:last-child{ border-bottom:none; }
+  .search-result-item:hover{ background:var(--peach-a); }
+  .sr-avatar{ width:38px; height:38px; border-radius:11px; background:var(--orange); color:#fff; font-family:'Baloo 2'; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; }
+  .sr-avatar img{ width:100%; height:100%; object-fit:cover; }
+  .sr-name{ font-weight:800; font-size:13.5px; }
+  .sr-loc{ font-size:11.5px; color:var(--muted); font-weight:600; }
+  .search-empty{ padding:16px; text-align:center; color:var(--muted); font-weight:700; font-size:13px; }
+
+  .modal-overlay{ display:none; position:fixed; inset:0; background:#16233Faa; z-index:100; align-items:flex-end; justify-content:center; }
+  .modal-overlay.show{ display:flex; }
+  .modal-sheet{ background:#fff; width:100%; max-width:480px; border-radius:26px 26px 0 0; padding:22px 22px 30px; animation:slideup .25s ease; }
+  @keyframes slideup{ from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+  .modal-title{ font-family:'Baloo 2'; font-weight:700; font-size:18px; margin-bottom:4px; }
+  .modal-sub{ font-size:12.5px; color:var(--muted); font-weight:600; margin-bottom:18px; }
+  .modal-city-btn{ width:100%; text-align:left; background:var(--peach-a); border:1.5px solid #FFDCC7; border-radius:16px; padding:14px 16px; margin-bottom:10px; font-weight:800; font-size:14.5px; cursor:pointer; color:var(--navy); }
+  .modal-close{ display:block; margin:6px auto 0; text-align:center; font-weight:700; font-size:13px; color:var(--muted); cursor:pointer; }
+
+  .badge-row{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .badge-pill{ font-size:11.5px; font-weight:800; padding:6px 12px; border-radius:12px; }
+  .badge-pill.on{ background:#E7F9EE; color:#1B9C4E; }
+  .badge-pill.off{ background:#F1F1F4; color:#9AA0AC; }
+
+  /* ---------- HOME ---------- */
+  .top-tag{ display:flex; justify-content:center; margin-bottom:14px; }
+  .top-tag span{ background:#fff; border:1.5px solid #FFDCC7; color:var(--orange-deep); font-weight:700; font-size:12px; padding:6px 14px; border-radius:20px; box-shadow:0 4px 12px -4px #FF6A2B33; display:flex; align-items:center; gap:6px; }
+  .logo-zone{ position:relative; text-align:center; margin-bottom:14px; }
+  .logo{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:46px; color:var(--orange); letter-spacing:-.01em; text-shadow:0 6px 18px #FF6A2B2E; position:relative; display:inline-block; cursor:default; }
+  .logo .spark{ position:absolute; top:-6px; right:-16px; }
+  h1{ font-family:'Baloo 2', sans-serif; font-weight:700; font-size:29px; line-height:1.28; text-align:center; margin-bottom:26px; }
+  h1 .accent{ color:var(--orange); position:relative; white-space:nowrap; }
+  h1 .accent svg{ position:absolute; left:0; bottom:-9px; width:100%; }
+  .search-btn{ width:44px; height:44px; border-radius:50%; flex-shrink:0; background:linear-gradient(150deg, var(--orange), var(--orange-deep)); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 14px -3px #FF6A2B70; }
+  .chips{ display:flex; gap:8px; overflow-x:auto; margin-bottom:34px; padding-bottom:2px; }
+  .chips::-webkit-scrollbar{ display:none; }
+  .chip{ flex-shrink:0; background:var(--peach-a); border:1.3px solid #FFE1CC; color:var(--orange-deep); font-weight:700; font-size:12.5px; padding:8px 14px; border-radius:16px; white-space:nowrap; cursor:pointer; }
+  .section-title{ display:flex; align-items:center; gap:8px; font-family:'Baloo 2', sans-serif; font-weight:700; font-size:19px; margin-bottom:16px; }
+  .cities{ display:flex; flex-direction:column; gap:14px; margin-bottom:34px; }
+  .city-card{ position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; border-radius:26px; padding:12px 16px 12px 12px; background:linear-gradient(120deg, var(--peach-a) 0%, var(--peach-b) 100%); border:1.5px solid #FFDCC7; box-shadow:0 10px 22px -14px #FF6A2B55; cursor:pointer; }
+  .city-card::after{ content:''; position:absolute; width:90px; height:90px; border-radius:50%; background:#ffffff55; top:-40px; right:-30px; }
+  .icon-stage{ width:68px; height:68px; border-radius:20px; background:#fff; flex-shrink:0; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 14px -6px #FF6A2B4D; position:relative; z-index:1; }
+  .city-info{ flex:1; min-width:0; position:relative; z-index:1; }
+  .city-name{ font-family:'Baloo 2', sans-serif; font-weight:700; font-size:18px; }
+  .city-count{ font-size:12px; color:var(--muted); font-weight:700; margin-top:2px; }
+  .city-arrow{ width:30px; height:30px; border-radius:50%; background:#fff; flex-shrink:0; position:relative; z-index:1; display:flex; align-items:center; justify-content:center; color:var(--orange); font-size:16px; font-weight:800; box-shadow:0 4px 10px -4px #FF6A2B4D; }
+
+  .promo{ position:relative; overflow:hidden; border-radius:28px; padding:26px 20px 22px; background:linear-gradient(150deg, #FF8A4D 0%, var(--orange) 45%, var(--orange-deep) 100%); box-shadow:0 20px 40px -14px #E8491C88, 0 4px 14px -6px #E8491C55; margin-bottom:26px; cursor:pointer; }
+  .promo-glow{ position:absolute; width:160px; height:160px; border-radius:50%; background:#ffffff26; top:-70px; left:-50px; }
+  .promo-ribbon{ position:absolute; top:16px; left:-34px; transform:rotate(-45deg); background:var(--navy); color:#fff; font-size:10.5px; font-weight:800; padding:4px 40px; letter-spacing:.04em; box-shadow:0 3px 8px #00000030; }
+  .promo-sparks{ position:absolute; top:18px; right:22px; opacity:.9; }
+  .promo-title{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:23px; color:#fff; line-height:1.2; text-shadow:0 3px 10px #00000022; position:relative; z-index:1; }
+  .promo-sub{ font-size:13.5px; color:#FFE8DC; font-weight:700; line-height:1.55; margin-bottom:18px; max-width:230px; position:relative; z-index:1; }
+  .promo-row{ display:flex; align-items:center; gap:14px; position:relative; z-index:1; }
+  .promo-illustration{ width:96px; flex-shrink:0; filter:drop-shadow(0 10px 12px #00000030); }
+  .promo-price{ display:inline-flex; align-items:center; gap:6px; background:#ffffff26; border:1.5px solid #ffffff40; color:#fff; font-weight:800; font-size:13px; padding:7px 13px; border-radius:14px; margin-bottom:14px; position:relative; z-index:1; }
+  .promo-btn{ display:inline-flex; align-items:center; gap:8px; background:#fff; color:var(--orange-deep); font-family:'Baloo 2', sans-serif; font-weight:700; font-size:15.5px; padding:13px 22px; border-radius:16px; box-shadow:0 10px 20px -6px #00000040; position:relative; z-index:1; }
+
+  footer.home-footer{ text-align:center; font-size:13px; color:var(--muted); font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px; }
+
+  .cat-list{ display:flex; flex-direction:column; gap:10px; }
+  .cat-row{ display:flex; align-items:center; gap:14px; background:#fff; border:1.5px solid #F5EEE9; border-radius:18px; padding:13px 16px; cursor:pointer; box-shadow:0 6px 16px -12px #16233F30; }
+  .cat-emoji{ width:42px; height:42px; border-radius:13px; background:var(--peach-a); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .cat-name{ flex:1; font-weight:800; font-size:15px; }
+  .cat-count{ font-size:12px; color:var(--muted); font-weight:700; }
+
+  .biz-list{ display:flex; flex-direction:column; gap:10px; }
+  .biz-row{ display:flex; align-items:center; gap:13px; background:#fff; border:1.5px solid #F5EEE9; border-radius:18px; padding:12px 14px; cursor:pointer; box-shadow:0 6px 16px -12px #16233F30; }
+  .biz-avatar{ width:48px; height:48px; border-radius:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Baloo 2'; font-weight:700; font-size:17px; overflow:hidden; }
+  .biz-avatar img{ width:100%; height:100%; object-fit:cover; }
+  .biz-info{ flex:1; min-width:0; }
+  .biz-name{ font-weight:800; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .biz-addr{ font-size:12px; color:var(--muted); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .biz-dist{ font-size:11.5px; font-weight:800; color:var(--orange-deep); background:var(--peach-a); padding:4px 9px; border-radius:9px; flex-shrink:0; white-space:nowrap; }
+
+  .geo-banner{ display:flex; align-items:center; gap:10px; background:var(--peach-a); border:1.5px dashed #FFCBA6; border-radius:14px; padding:11px 14px; margin-bottom:16px; font-size:12.5px; font-weight:700; color:var(--orange-deep); cursor:pointer; }
+
+  .detail-photo{ height:190px; border-radius:24px; background:linear-gradient(135deg, var(--orange-light), var(--orange)); display:flex; align-items:center; justify-content:center; margin-bottom:18px; box-shadow:0 14px 28px -14px #FF6A2B60; position:relative; overflow:hidden; }
+  .detail-photo span{ font-family:'Baloo 2'; font-size:52px; color:#fff; opacity:.85; }
+  .detail-photo img{ width:100%; height:100%; object-fit:cover; }
+  .detail-name{ font-family:'Baloo 2', sans-serif; font-weight:700; font-size:24px; margin-bottom:4px; }
+  .detail-cat{ color:var(--orange-deep); font-weight:800; font-size:13px; margin-bottom:16px; }
+  .detail-row{ display:flex; align-items:center; gap:12px; background:#fff; border:1.5px solid #F5EEE9; border-radius:16px; padding:13px 15px; margin-bottom:10px; }
+  .detail-row svg{ flex-shrink:0; }
+  .detail-row .t{ font-weight:700; font-size:13.5px; }
+  .detail-row .s{ font-size:11.5px; color:var(--muted); font-weight:600; }
+  .contact-buttons{ display:flex; gap:10px; margin-top:18px; }
+  .cbtn{ flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:14px; border-radius:16px; font-family:'Baloo 2'; font-weight:700; font-size:14.5px; color:#fff; text-decoration:none; cursor:pointer; }
+  .cbtn.wa{ background:var(--green); box-shadow:0 10px 20px -8px #25D36680; }
+  .cbtn.ig{ background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888); box-shadow:0 10px 20px -8px #dc274380; }
+
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12.5px; font-weight:800; color:var(--navy); margin-bottom:6px; }
+  .field input, .field select{ width:100%; padding:13px 15px; border-radius:14px; border:1.5px solid #F0E5DC; background:#fff; font-family:'Nunito'; font-size:14px; font-weight:600; color:var(--navy); outline:none; }
+  .field input:focus, .field select:focus{ border-color:var(--orange); }
+  .field-2col{ display:flex; gap:10px; }
+  .field-2col .field{ flex:1; }
+
+  .photo-preview-wrap{ display:none; align-items:center; gap:12px; margin-bottom:10px; }
+  .photo-preview-wrap img{ width:60px; height:60px; border-radius:14px; object-fit:cover; border:1.5px solid #F0E5DC; }
+  .photo-remove{ background:none; border:none; color:var(--red); font-weight:800; font-size:12.5px; cursor:pointer; padding:0; }
+  .photo-upload-btn{ display:inline-flex; align-items:center; gap:7px; background:var(--peach-a); border:1.5px solid #FFDCC7; color:var(--orange-deep); font-weight:800; font-size:13px; padding:11px 16px; border-radius:14px; cursor:pointer; margin-bottom:8px; }
+  .photo-or{ font-size:11px; color:var(--muted); font-weight:700; margin:2px 0 6px; }
+  .submit-btn{ width:100%; margin-top:8px; background:linear-gradient(135deg, var(--orange), var(--orange-deep)); color:#fff; border:none; padding:16px; border-radius:16px; font-family:'Baloo 2'; font-weight:700; font-size:16px; box-shadow:0 14px 26px -10px #FF6A2B70; cursor:pointer; }
+  .success-box{ text-align:center; padding:30px 10px; }
+  .success-box .circle{ width:70px; height:70px; border-radius:50%; background:var(--peach-a); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; }
+
+  .admin-card{ background:var(--navy); border-radius:24px; padding:28px 22px; color:#fff; }
+  .admin-card h2{ font-family:'Baloo 2'; font-size:21px; margin-bottom:4px; }
+  .admin-card p{ font-size:12.5px; color:#B8C0D4; margin-bottom:20px; }
+  .admin-card .field label{ color:#DCE1EE; }
+  .admin-card .field input{ background:#22304F; border-color:#33436B; color:#fff; }
+  .admin-btn{ width:100%; background:var(--orange); color:#fff; border:none; padding:15px; border-radius:14px; font-family:'Baloo 2'; font-weight:700; font-size:15px; margin-top:6px; cursor:pointer; }
+
+  .admin-stats{ display:flex; gap:10px; margin-bottom:24px; }
+  .stat-card{ flex:1; background:#fff; border:1.5px solid #F5EEE9; border-radius:16px; padding:12px 10px; text-align:center; box-shadow:0 6px 16px -12px #16233F30; }
+  .stat-num{ font-family:'Baloo 2'; font-weight:800; font-size:21px; color:var(--navy); }
+  .stat-num.warn{ color:var(--orange-deep); }
+  .stat-label{ font-size:10.5px; color:var(--muted); font-weight:700; margin-top:2px; }
+
+  .add-btn{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; background:var(--navy); color:#fff; border:none; padding:14px; border-radius:16px; font-family:'Baloo 2'; font-weight:700; font-size:14.5px; margin-bottom:26px; cursor:pointer; }
+
+  .admin-section-title{ font-family:'Baloo 2'; font-weight:700; font-size:17px; margin:8px 0 12px; display:flex; align-items:center; gap:8px; }
+  .admin-count{ background:var(--orange); color:#fff; font-size:11px; padding:2px 8px; border-radius:10px; font-family:'Nunito'; }
+
+  .pending-card{ background:#fff; border:1.5px solid #F5EEE9; border-radius:18px; padding:15px 16px; margin-bottom:12px; box-shadow:0 6px 16px -12px #16233F30; }
+  .pending-card.duesoon{ border-color:var(--orange); box-shadow:0 6px 16px -10px #FF6A2B55; }
+  .pending-card.overdue{ border-color:var(--red); background:#FFF6F6; }
+  .pending-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px; }
+  .pending-name{ font-weight:800; font-size:15px; }
+  .pending-meta{ font-size:12px; color:var(--muted); font-weight:600; margin-top:2px; }
+  .pending-status{ font-size:10.5px; font-weight:800; padding:4px 9px; border-radius:9px; white-space:nowrap; cursor:pointer; }
+  .pending-status.pago{ background:#E7F9EE; color:#1B9C4E; }
+  .pending-status.naopago{ background:#FFE9E9; color:#C23A3A; }
+  .pending-status.pendente{ background:#FFF3D6; color:#A87200; }
+  .due-warning{ font-size:11px; font-weight:800; color:var(--red); margin-top:4px; }
+  .pending-thumb{ width:44px; height:44px; border-radius:12px; flex-shrink:0; overflow:hidden; background:var(--peach-a); display:flex; align-items:center; justify-content:center; font-family:'Baloo 2'; font-weight:700; color:var(--orange-deep); }
+  .pending-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .pending-head{ display:flex; gap:10px; flex:1; min-width:0; }
+  .pending-controls{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+  .pending-controls select, .pending-controls input{ flex:1; min-width:100px; padding:9px 10px; border-radius:10px; border:1.3px solid #F0E5DC; font-size:12px; font-weight:700; color:var(--navy); font-family:'Nunito'; }
+  .pending-btn{ background:var(--navy); color:#fff; border:none; padding:9px 12px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; white-space:nowrap; }
+  .pending-btn.ghost{ background:#fff; color:var(--navy); border:1.3px solid #E4E7EE; }
+  .pending-btn.danger{ background:#fff; color:var(--red); border:1.3px solid #FFD3D3; }
+  .pending-btn.go{ background:var(--orange); }
+
+  .toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(120%); background:var(--navy); color:#fff; padding:12px 20px; border-radius:14px; font-weight:700; font-size:13px; box-shadow:0 10px 24px -8px #00000060; z-index:50; transition:transform .3s ease; max-width:88%; text-align:center; }
+  .toast.show{ transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+
+<svg width="0" height="0">
+  <defs>
+    <linearGradient id="gOrange" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF9358"/><stop offset="100%" stop-color="#E8491C"/></linearGradient>
+    <linearGradient id="gOrangeSoft" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFC49B"/><stop offset="100%" stop-color="#FF8A4D"/></linearGradient>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <!-- ===================== HOME ===================== -->
+  <section id="screen-home" class="screen active">
+    <div class="top-tag"><span>📍 Cajamar · Santana de Parnaíba · Colinas</span></div>
+    <div class="logo-zone">
+      <div class="logo" id="logo-tap" title="">Vizim<span style="color:var(--orange-deep)">.</span>
+        <svg class="spark" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2Z" fill="var(--orange-light)"/></svg>
+      </div>
+    </div>
+    <h1>Descubra empresas<br><span class="accent">perto de você
+      <svg viewBox="0 0 160 10" preserveAspectRatio="none"><path d="M2 6 Q40 2 80 6 T158 5" stroke="var(--orange)" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+    </span></h1>
+
+    <div class="search-wrap">
+      <div class="search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2.2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <input id="home-search" type="text" placeholder="Buscar por empresa ou serviço..." autocomplete="off">
+        <div class="search-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#fff" stroke-width="2.4"/><path d="m21 21-4.3-4.3" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></div>
+      </div>
+      <div class="search-results" id="home-search-results" style="display:none"></div>
+    </div>
+
+    <div class="chips" id="home-chips"></div>
+
+    <div class="section-title">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2C7.6 2 4 5.6 4 10c0 6 8 12 8 12s8-6 8-12c0-4.4-3.6-8-8-8Z" fill="var(--orange)"/><circle cx="12" cy="10" r="2.6" fill="#fff"/></svg>
+      Explorar por cidade
+    </div>
+
+    <div class="cities" id="home-cities"></div>
+
+    <div class="promo" onclick="openSignup()">
+      <div class="promo-glow"></div>
+      <div class="promo-ribbon">TOP</div>
+      <div class="promo-sparks"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2Z" fill="#fff"/></svg></div>
+      <div class="promo-title">Sua empresa em<br>destaque no Vizim!</div>
+      <div class="promo-sub">Apareça pra quem está pertinho procurando exatamente o que você oferece.</div>
+      <div class="promo-row">
+        <svg class="promo-illustration" width="96" height="96" viewBox="0 0 92 92">
+          <ellipse cx="46" cy="80" rx="30" ry="4" fill="#00000020"/>
+          <rect x="14" y="42" width="60" height="36" rx="3" fill="#fff"/>
+          <path d="M9 42 46 22 83 42Z" fill="var(--navy)"/>
+          <rect x="14" y="42" width="60" height="10" fill="#fff"/>
+          <rect x="14" y="42" width="7.5" height="10" fill="var(--orange-deep)"/>
+          <rect x="29" y="42" width="7.5" height="10" fill="#fff"/>
+          <rect x="44" y="42" width="7.5" height="10" fill="var(--orange-deep)"/>
+          <rect x="59" y="42" width="7.5" height="10" fill="#fff"/>
+          <rect x="36" y="58" width="16" height="20" rx="1" fill="var(--navy)"/>
+          <circle cx="47" cy="68" r="1.6" fill="#fff"/>
+          <rect x="19" y="55" width="13" height="13" rx="2" fill="#FFE1D0"/>
+          <rect x="56" y="55" width="13" height="13" rx="2" fill="#FFE1D0"/>
+          <circle cx="70" cy="30" r="9" fill="#FFD24A"/>
+        </svg>
+        <div>
+          <div class="promo-price">✨ a partir de R$ 9,99/mês</div><br>
+          <div class="promo-btn">Quero anunciar
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="var(--orange-deep)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="home-footer">Feito com <span style="color:#fff; background:var(--orange); width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:11px;">♥</span> para conectar você.</footer>
+  </section>
+
+  <!-- ===================== CATEGORIAS DA CIDADE ===================== -->
+  <section id="screen-city" class="screen">
+    <div class="topbar">
+      <div class="back-btn" onclick="showScreen('screen-home')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18 9 12l6-6" stroke="var(--navy)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="topbar-title" id="city-title">Cidade</div><div class="topbar-sub" id="city-sub">categorias</div></div>
+    </div>
+    <div class="search">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2.2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <input id="city-search" type="text" placeholder="Buscar categoria...">
+    </div>
+    <div class="cat-list" id="city-cat-list"></div>
+  </section>
+
+  <!-- ===================== LISTA DE ESTABELECIMENTOS ===================== -->
+  <section id="screen-category" class="screen">
+    <div class="topbar">
+      <div class="back-btn" onclick="backToCity()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18 9 12l6-6" stroke="var(--navy)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="topbar-title" id="cat-title">Categoria</div><div class="topbar-sub" id="cat-sub">estabelecimentos</div></div>
+    </div>
+    <div class="search">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2.2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <input id="biz-search" type="text" placeholder="Buscar nome...">
+    </div>
+    <div class="geo-banner" id="geo-banner" onclick="requestGeo()">📍 <span>Toque para usar sua localização e ver a distância real</span></div>
+    <div class="biz-list" id="biz-list"></div>
+  </section>
+
+  <!-- ===================== DETALHE DO ESTABELECIMENTO ===================== -->
+  <section id="screen-detail" class="screen">
+    <div class="topbar">
+      <div class="back-btn" onclick="backToCategory()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18 9 12l6-6" stroke="var(--navy)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="topbar-title">Detalhes</div>
+    </div>
+    <div class="detail-photo"><span id="detail-initial">V</span><img id="detail-photo-img" style="display:none"></div>
+    <div class="detail-name" id="detail-name"></div>
+    <div class="detail-cat" id="detail-cat"></div>
+
+    <div class="detail-row">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2C7.6 2 4 5.6 4 10c0 6 8 12 8 12s8-6 8-12c0-4.4-3.6-8-8-8Z" stroke="var(--orange)" stroke-width="2"/><circle cx="12" cy="10" r="2.6" stroke="var(--orange)" stroke-width="2"/></svg>
+      <div><div class="t" id="detail-addr"></div><div class="s" id="detail-dist"></div></div>
+    </div>
+    <div class="detail-row">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="var(--orange)" stroke-width="2"/><path d="M9 8h6M9 12h6M9 16h3" stroke="var(--orange)" stroke-width="2" stroke-linecap="round"/></svg>
+      <div><div class="t">Aberto agora</div><div class="s" id="detail-hours"></div></div>
+    </div>
+
+    <div id="detail-food-info" style="display:none">
+      <div class="badge-row"><span class="badge-pill" id="detail-delivery-badge"></span></div>
+      <div class="detail-row" id="detail-fee-row" style="display:none">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 7h11l4 4v6h-3M3 7v10h1M14 7v10" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7.5" cy="17.5" r="1.6" stroke="var(--orange)" stroke-width="2"/><circle cx="17.5" cy="17.5" r="1.6" stroke="var(--orange)" stroke-width="2"/></svg>
+        <div><div class="t">Taxa de entrega</div><div class="s" id="detail-fee"></div></div>
+      </div>
+      <div class="detail-row" id="detail-menu-row" style="display:none; cursor:pointer;" onclick="openMenu()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 3h8l4 4v14H7z" stroke="var(--orange)" stroke-width="2" stroke-linejoin="round"/><path d="M10 10h6M10 14h6M10 18h4" stroke="var(--orange)" stroke-width="2" stroke-linecap="round"/></svg>
+        <div><div class="t">Ver cardápio</div><div class="s">Toque para abrir</div></div>
+      </div>
+    </div>
+
+    <div class="contact-buttons">
+      <a class="cbtn wa" id="detail-wa" target="_blank"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20Z"/></svg>WhatsApp</a>
+      <a class="cbtn ig" id="detail-ig" target="_blank"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><rect x="3" y="3" width="18" height="18" rx="5"/></svg>Instagram</a>
+    </div>
+  </section>
+
+  <!-- ===================== CADASTRE SUA EMPRESA (público) ===================== -->
+  <section id="screen-signup" class="screen">
+    <div class="topbar">
+      <div class="back-btn" onclick="showScreen('screen-home')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18 9 12l6-6" stroke="var(--navy)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="topbar-title">Cadastre sua empresa</div>
+    </div>
+    <div id="signup-form">
+      <div class="field"><label>Nome da empresa</label><input id="su-name" type="text" placeholder="Ex: Mercado Bom Preço"></div>
+      <div class="field"><label>Cidade</label><select id="signup-city"><option value="cajamar">Cajamar</option><option value="santana">Santana de Parnaíba</option><option value="colinas">Colinas do Anhanguera</option></select></div>
+      <div class="field"><label>Categoria</label><input id="su-cat" type="text" placeholder="Ex: Mercado, Farmácia, Salão..."></div>
+      <div class="field"><label>Endereço</label><input id="su-addr" type="text" placeholder="Rua, número, bairro"></div>
+      <div class="field"><label>WhatsApp (número ou link)</label><input id="su-wa" type="text" placeholder="(11) 90000-0000 ou wa.me/..."></div>
+      <div class="field"><label>Instagram (usuário ou link)</label><input id="su-ig" type="text" placeholder="@empresa ou link completo"></div>
+      <div class="field">
+        <label>Link de uma foto da empresa (opcional)</label>
+        <input id="su-photo" type="text" placeholder="https://...">
+        <div class="photo-or">sem link à mão? sem problema — trazemos a câmera na visita 😉</div>
+      </div>
+      <div class="field"><label>Faz delivery? (se aplicável)</label><select id="su-delivery"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+      <div class="field"><label>Taxa de entrega (opcional)</label><input id="su-fee" type="text" placeholder="Ex: a partir de R$ 6,00"></div>
+      <div class="field"><label>Link do cardápio (opcional)</label><input id="su-menu" type="text" placeholder="Link do PDF, site ou Instagram"></div>
+      <button class="submit-btn" onclick="submitSignup()">Enviar cadastro — R$ 9,99/mês</button>
+    </div>
+    <div id="signup-success" style="display:none" class="success-box">
+      <div class="circle"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div style="font-family:'Baloo 2'; font-weight:700; font-size:19px; margin-bottom:8px;">Recebemos seu cadastro!</div>
+      <div style="color:var(--muted); font-weight:600; font-size:13.5px; margin-bottom:22px;">Vamos entrar em contato pelo WhatsApp informado para combinar a visita e ativar sua loja.</div>
+      <button class="submit-btn" onclick="showScreen('screen-home')" style="background:var(--navy)">Voltar ao início</button>
+    </div>
+  </section>
+
+  <!-- ===================== ADMIN: LOGIN ===================== -->
+  <section id="screen-admin" class="screen">
+    <div class="topbar">
+      <div class="back-btn" onclick="showScreen('screen-home')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18 9 12l6-6" stroke="var(--navy)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="topbar-title">Área restrita</div>
+    </div>
+    <div class="admin-card">
+      <h2>Painel administrativo</h2>
+      <p>Acesso exclusivo do administrador do Vizim.</p>
+      <div class="field"><label>E-mail</label><input id="admin-user" type="email" placeholder="seu@email.com"></div>
+      <div class="field"><label>Senha</label><input id="admin-pass" type="password" placeholder="••••••••"></div>
+      <button class="admin-btn" onclick="doAdminLogin()">Entrar</button>
+    </div>
+  </section>
+
+  <!-- ===================== ADMIN: PAINEL ===================== -->
+  <section id="screen-admin-panel" class="screen">
+    <div class="topbar">
+      <div class="back-btn" onclick="showScreen('screen-home')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18 9 12l6-6" stroke="var(--navy)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="topbar-title">Painel administrativo</div><div class="topbar-sub">gestão de empresas</div></div>
+    </div>
+
+    <div class="admin-stats">
+      <div class="stat-card"><div class="stat-num" id="stat-ativas">0</div><div class="stat-label">EMPRESAS ATIVAS</div></div>
+      <div class="stat-card"><div class="stat-num warn" id="stat-vencendo">0</div><div class="stat-label">VENCENDO/ATRASADO</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-pendentes">0</div><div class="stat-label">CADASTROS NOVOS</div></div>
+    </div>
+
+    <button class="add-btn" onclick="openAdminEdit(null)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+      Adicionar nova empresa
+    </button>
+
+    <div class="admin-section-title">📥 Cadastros pendentes <span class="admin-count" id="pending-count">0</span></div>
+    <div id="pending-list" style="margin-bottom:28px"></div>
+
+    <div class="admin-section-title">🏪 Empresas cadastradas <span class="admin-count" id="active-count">0</span></div>
+    <div id="active-list"></div>
+  </section>
+
+  <!-- ===================== ADMIN: ADICIONAR/EDITAR EMPRESA ===================== -->
+  <section id="screen-admin-edit" class="screen">
+    <div class="topbar">
+      <div class="back-btn" onclick="showScreen('screen-admin-panel')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18 9 12l6-6" stroke="var(--navy)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="topbar-title" id="edit-title">Nova empresa</div>
+    </div>
+
+    <div class="field"><label>Nome da empresa</label><input id="ed-name" type="text"></div>
+    <div class="field-2col">
+      <div class="field"><label>Cidade</label><select id="ed-city"><option value="cajamar">Cajamar</option><option value="santana">Santana de Parnaíba</option><option value="colinas">Colinas do Anhanguera</option></select></div>
+      <div class="field"><label>Categoria</label><select id="ed-category"></select></div>
+    </div>
+    <div class="field"><label>Endereço</label><input id="ed-addr" type="text"></div>
+    <div class="field-2col">
+      <div class="field"><label>WhatsApp (número ou link)</label><input id="ed-wa" type="text" placeholder="(11) 90000-0000 ou wa.me/..."></div>
+      <div class="field"><label>Instagram (usuário ou link)</label><input id="ed-ig" type="text" placeholder="@empresa ou link completo"></div>
+    </div>
+    <div class="field">
+      <label>Foto da empresa</label>
+      <div class="photo-preview-wrap" id="ed-photo-preview-wrap">
+        <img id="ed-photo-preview" src="">
+        <button type="button" class="photo-remove" onclick="clearPhoto('ed')">Remover foto</button>
+      </div>
+      <label class="photo-upload-btn">
+        📷 Escolher da galeria
+        <input type="file" accept="image/*" id="ed-photo-file" style="display:none" onchange="handlePhotoFile(event,'ed')">
+      </label>
+      <div class="photo-or">ou cole o link de uma imagem:</div>
+      <input id="ed-photo" type="text" placeholder="https://..." oninput="updatePhotoPreviewFromUrl('ed')">
+    </div>
+    <div class="field-2col">
+      <div class="field"><label>Faz delivery?</label><select id="ed-delivery"><option value="">Não se aplica</option><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+      <div class="field"><label>Taxa de entrega</label><input id="ed-fee" type="text" placeholder="a partir de R$ 5,00"></div>
+    </div>
+    <div class="field"><label>Link do cardápio</label><input id="ed-menu" type="text"></div>
+
+    <div class="section-title" style="font-size:15px; margin-top:6px;">💳 Cobrança</div>
+    <div class="field-2col">
+      <div class="field"><label>Plano</label><select id="ed-plan"><option>Básico</option><option>Premium</option></select></div>
+      <div class="field"><label>Pagamento</label><select id="ed-paid"><option value="sim">Pago</option><option value="nao">Não pago</option></select></div>
+    </div>
+    <div class="field"><label>Próximo vencimento</label><input id="ed-due" type="date"></div>
+
+    <button class="submit-btn" onclick="saveAdminEdit()">Salvar empresa</button>
+    <button class="submit-btn" id="ed-delete-btn" style="background:#fff; color:var(--red); border:1.5px solid #FFD3D3; box-shadow:none; margin-top:10px; display:none;" onclick="deleteFromEdit()">Excluir empresa</button>
+  </section>
+
+</div>
+
+<div class="modal-overlay" id="city-picker">
+  <div class="modal-sheet">
+    <div class="modal-title" id="picker-title">Buscar em qual cidade?</div>
+    <div class="modal-sub">Escolha a cidade pra ver essa categoria</div>
+    <div id="picker-city-list"></div>
+    <div class="modal-close" onclick="closeCityPicker()">Cancelar</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------- CONFIGURAÇÃO ---------------- */
+const CITIES = {
+  cajamar:{ name:"Cajamar", lat:-23.3208, lng:-46.8747 },
+  santana:{ name:"Santana de Parnaíba", lat:-23.4443, lng:-46.9186 },
+  colinas:{ name:"Colinas do Anhanguera", lat:-23.2980, lng:-46.8695 }
+};
+const CATEGORIES = [
+  {slug:'farmacia', label:'Farmácia', emoji:'💊'},
+  {slug:'restaurante', label:'Restaurante', emoji:'🍔'},
+  {slug:'lanchonete', label:'Lanchonete', emoji:'🍔'},
+  {slug:'academia', label:'Academia', emoji:'🏋️'},
+  {slug:'mercado', label:'Mercado', emoji:'🛒'},
+  {slug:'salao', label:'Salão de Beleza', emoji:'💇'},
+  {slug:'outros', label:'Outros', emoji:'🏪'}
+];
+function catInfo(slug){ return CATEGORIES.find(c=>c.slug===slug) || CATEGORIES[CATEGORIES.length-1]; }
+
+/* ---------------- SUPABASE ---------------- */
+const SUPABASE_URL = 'https://vlwhjdnhswnnvkkdognh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_6WWQyKl9Sc11s-qgCVG2sg_LFugwZ7E';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+
+/* converte linha do banco (snake_case) <-> objeto usado no app */
+function dbToApp(row){
+  return {
+    id: row.id, name: row.name, city: row.city, category: row.category,
+    addr: row.address, lat: row.lat, lng: row.lng,
+    wa: row.whatsapp, ig: row.instagram,
+    delivery: row.delivery, fee: row.delivery_fee, menu: row.menu_url,
+    photo: row.photo_url, paid: row.paid, dueDate: row.due_date,
+    plan: row.plan, status: row.status
+  };
+}
+function appToDb(o){
+  return {
+    name: o.name, city: o.city, category: o.category,
+    address: o.addr, lat: o.lat, lng: o.lng,
+    whatsapp: o.wa, instagram: o.ig,
+    delivery: (typeof o.delivery === 'boolean') ? o.delivery : null,
+    delivery_fee: o.fee || null, menu_url: o.menu || null,
+    photo_url: o.photo || null, paid: o.paid, due_date: o.dueDate || null,
+    plan: o.plan, status: o.status
+  };
+}
+function dbToPending(row){
+  return { id: row.id, name: row.name, city: row.city, categoryText: row.category_text,
+    addr: row.address, wa: row.whatsapp, ig: row.instagram, delivery: row.delivery,
+    fee: row.delivery_fee, menu: row.menu_url, photo: row.photo_url };
+}
+function pendingToDb(o){
+  return { name: o.name, city: o.city, category_text: o.categoryText,
+    address: o.addr, whatsapp: o.wa, instagram: o.ig, delivery: o.delivery,
+    delivery_fee: o.fee || null, menu_url: o.menu || null, photo_url: o.photo || null };
+}
+async function loadBusinesses(){
+  const { data, error } = await sb.from('businesses').select('*').order('name');
+  if(error){ console.error(error); showToast('Não consegui carregar as empresas do banco.'); return; }
+  BUSINESSES = (data||[]).map(dbToApp);
+}
+async function loadPending(){
+  const { data, error } = await sb.from('pending_signups').select('*').order('created_at', {ascending:false});
+  if(error){ console.error(error); return; }
+  pendingCompanies = (data||[]).map(dbToPending);
+}
+
+/* ---------------- DADOS EM MEMÓRIA (sincronizados com o Supabase) ---------------- */
+let BUSINESSES = [];
+let pendingCompanies = [];
+
+let state = { cityKey:null, catKey:null, bizId:null, userPos:null, menuUrl:null };
+let editingId = null;
+let pendingChipCategory = null;
+let logoTapCount = 0, logoTapTimer = null;
+
+/* ---------------- utilidades ---------------- */
+function distanceKm(lat1,lng1,lat2,lng2){
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = new Date(dateStr+'T00:00:00');
+  return Math.round((due-today)/86400000);
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
+}
+function avatarHtml(biz, sizeClass){
+  if(biz.photo) return `<img src="${biz.photo}" alt="${biz.name}">`;
+  return biz.name.charAt(0);
+}
+function normalizeWhatsapp(raw){
+  if(!raw) return '';
+  const s = raw.trim();
+  let m = s.match(/wa\.me\/(\d+)/) || s.match(/phone=(\d+)/);
+  if(m) return m[1];
+  return s.replace(/\D/g,'');
+}
+function normalizeInstagram(raw){
+  if(!raw) return '';
+  const s = raw.trim();
+  let m = s.match(/instagram\.com\/([^/?#]+)/i);
+  if(m) return m[1];
+  return s.replace(/^@/,'').trim();
+}
+async function handlePhotoFile(e, prefix){
+  const file = e.target.files[0];
+  if(!file) return;
+  showToast('Enviando foto...');
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${prefix}-${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from('fotos').upload(path, file, { upsert:true });
+  if(error){ console.error(error); showToast('Erro ao enviar foto — confirme que está logado como admin.'); return; }
+  const { data } = sb.storage.from('fotos').getPublicUrl(path);
+  document.getElementById(prefix+'-photo').value = data.publicUrl;
+  showPhotoPreview(prefix, data.publicUrl);
+  showToast('Foto enviada ✅');
+}
+function updatePhotoPreviewFromUrl(prefix){
+  const val = document.getElementById(prefix+'-photo').value.trim();
+  if(val) showPhotoPreview(prefix, val); else hidePhotoPreview(prefix);
+}
+function showPhotoPreview(prefix, src){
+  document.getElementById(prefix+'-photo-preview').src = src;
+  document.getElementById(prefix+'-photo-preview-wrap').style.display = 'flex';
+}
+function hidePhotoPreview(prefix){ document.getElementById(prefix+'-photo-preview-wrap').style.display = 'none'; }
+function clearPhoto(prefix){
+  document.getElementById(prefix+'-photo').value = '';
+  document.getElementById(prefix+'-photo-file').value = '';
+  hidePhotoPreview(prefix);
+}
+
+/* ---------------- navegação ---------------- */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function openCity(key){
+  state.cityKey = key;
+  document.getElementById('city-title').textContent = CITIES[key].name;
+  document.getElementById('city-sub').textContent = 'escolha uma categoria';
+  document.getElementById('city-search').value = '';
+  renderCategories('');
+  showScreen('screen-city');
+}
+function backToCity(){ showScreen('screen-city'); }
+function backToCategory(){ showScreen('screen-category'); }
+
+function renderCategories(filter){
+  const wrap = document.getElementById('city-cat-list');
+  wrap.innerHTML = '';
+  const present = {};
+  BUSINESSES.filter(b=>b.city===state.cityKey && b.status==='ativo').forEach(b=>{
+    present[b.category] = (present[b.category]||0) + 1;
+  });
+  const slugs = Object.keys(present)
+    .filter(s => catInfo(s).label.toLowerCase().includes(filter.toLowerCase()))
+    .sort((a,b)=> catInfo(a).label.localeCompare(catInfo(b).label,'pt-BR'));
+  if(slugs.length===0){ wrap.innerHTML = '<div class="empty">Nenhuma categoria encontrada 😕</div>'; return; }
+  slugs.forEach(slug=>{
+    const info = catInfo(slug);
+    const row = document.createElement('div');
+    row.className = 'cat-row';
+    row.onclick = ()=>openCategory(slug);
+    row.innerHTML = `<div class="cat-emoji">${info.emoji}</div>
+      <div style="flex:1"><div class="cat-name">${info.label}</div><div class="cat-count">${present[slug]} no local</div></div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="var(--orange)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('city-search').addEventListener('input', e=>renderCategories(e.target.value));
+
+function openCategory(slug){
+  state.catKey = slug;
+  const info = catInfo(slug);
+  document.getElementById('cat-title').textContent = info.label;
+  document.getElementById('cat-sub').textContent = CITIES[state.cityKey].name;
+  document.getElementById('biz-search').value = '';
+  document.getElementById('geo-banner').style.display = state.userPos ? 'none' : 'flex';
+  renderBizList('');
+  showScreen('screen-category');
+}
+
+function renderBizList(filter){
+  const wrap = document.getElementById('biz-list');
+  wrap.innerHTML = '';
+  const items = BUSINESSES
+    .filter(b=>b.city===state.cityKey && b.category===state.catKey && b.status==='ativo')
+    .filter(b=>b.name.toLowerCase().includes(filter.toLowerCase()))
+    .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  if(items.length===0){ wrap.innerHTML = '<div class="empty">Nenhum estabelecimento encontrado 😕</div>'; return; }
+  const colors = ['#FF6A2B','#E8491C','#16233F','#FF9358'];
+  items.forEach((it,i)=>{
+    let distTxt;
+    if(state.userPos){
+      const d = distanceKm(state.userPos.lat, state.userPos.lng, it.lat, it.lng);
+      distTxt = d<1 ? Math.round(d*1000)+' m' : d.toFixed(1)+' km';
+    } else {
+      const c = CITIES[state.cityKey];
+      const d = distanceKm(c.lat, c.lng, it.lat, it.lng);
+      distTxt = '~'+d.toFixed(1)+' km';
+    }
+    const row = document.createElement('div');
+    row.className = 'biz-row';
+    row.onclick = ()=>openDetail(it.id);
+    row.innerHTML = `<div class="biz-avatar" style="background:${colors[i%colors.length]}">${avatarHtml(it)}</div>
+      <div class="biz-info"><div class="biz-name">${it.name}</div><div class="biz-addr">${it.addr}</div></div>
+      <div class="biz-dist">${distTxt}</div>`;
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('biz-search').addEventListener('input', e=>renderBizList(e.target.value));
+
+function requestGeo(){
+  const banner = document.getElementById('geo-banner');
+  banner.querySelector('span').textContent = 'Buscando sua localização...';
+  if(!navigator.geolocation){ showToast('Seu navegador não permite localização aqui.'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      state.userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      document.getElementById('geo-banner').style.display = 'none';
+      renderBizList(document.getElementById('biz-search').value);
+      showToast('Localização ativada — distâncias reais 📍');
+    },
+    ()=>{ banner.querySelector('span').textContent = 'Não conseguimos acessar sua localização — toque pra tentar de novo'; }
+  );
+}
+
+function openDetail(id){
+  const it = BUSINESSES.find(b=>b.id===id);
+  if(!it) return;
+  state.bizId = id;
+  const photoImg = document.getElementById('detail-photo-img');
+  const initial = document.getElementById('detail-initial');
+  if(it.photo){ photoImg.src = it.photo; photoImg.style.display='block'; initial.style.display='none'; }
+  else { photoImg.style.display='none'; initial.style.display='block'; initial.textContent = it.name.charAt(0); }
+  document.getElementById('detail-name').textContent = it.name;
+  document.getElementById('detail-cat').textContent = catInfo(it.category).label + ' · ' + CITIES[it.city].name;
+  document.getElementById('detail-addr').textContent = it.addr;
+  let distTxt;
+  if(state.userPos){
+    const d = distanceKm(state.userPos.lat, state.userPos.lng, it.lat, it.lng);
+    distTxt = (d<1 ? Math.round(d*1000)+' m' : d.toFixed(1)+' km') + ' de você';
+  } else { distTxt = 'Ative a localização pra ver a distância exata'; }
+  document.getElementById('detail-dist').textContent = distTxt;
+  document.getElementById('detail-hours').textContent = '08:00 – 18:00 (seg a sáb)';
+  document.getElementById('detail-wa').href = `https://wa.me/${it.wa}`;
+  document.getElementById('detail-ig').href = `https://instagram.com/${it.ig}`;
+
+  const foodInfo = document.getElementById('detail-food-info');
+  if(typeof it.delivery === 'boolean'){
+    foodInfo.style.display = 'block';
+    const badge = document.getElementById('detail-delivery-badge');
+    badge.className = 'badge-pill ' + (it.delivery ? 'on' : 'off');
+    badge.textContent = it.delivery ? '🛵 Faz delivery' : '🚫 Não faz delivery';
+    const feeRow = document.getElementById('detail-fee-row');
+    if(it.delivery && it.fee){ feeRow.style.display='flex'; document.getElementById('detail-fee').textContent = it.fee; } else feeRow.style.display='none';
+    const menuRow = document.getElementById('detail-menu-row');
+    if(it.menu){ menuRow.style.display='flex'; state.menuUrl = it.menu; } else menuRow.style.display='none';
+  } else { foodInfo.style.display = 'none'; }
+
+  showScreen('screen-detail');
+}
+function openMenu(){ if(state.menuUrl) window.open(state.menuUrl, '_blank'); }
+
+/* ---------------- cadastro público ---------------- */
+function openSignup(){
+  document.getElementById('signup-form').style.display='block';
+  document.getElementById('signup-success').style.display='none';
+  showScreen('screen-signup');
+}
+async function submitSignup(){
+  const name = document.getElementById('su-name').value.trim() || 'Empresa sem nome';
+  const entry = {
+    name,
+    city: document.getElementById('signup-city').value,
+    categoryText: document.getElementById('su-cat').value.trim() || 'Não informada',
+    addr: document.getElementById('su-addr').value.trim(),
+    wa: normalizeWhatsapp(document.getElementById('su-wa').value),
+    ig: normalizeInstagram(document.getElementById('su-ig').value),
+    photo: document.getElementById('su-photo').value.trim(),
+    delivery: document.getElementById('su-delivery').value === 'sim',
+    fee: document.getElementById('su-fee').value.trim(),
+    menu: document.getElementById('su-menu').value.trim()
+  };
+  const { error } = await sb.from('pending_signups').insert(pendingToDb(entry));
+  if(error){ console.error(error); showToast('Não consegui enviar seu cadastro, tenta de novo.'); return; }
+  document.getElementById('signup-form').style.display='none';
+  document.getElementById('signup-success').style.display='block';
+}
+
+/* ---------------- admin: login + painel ---------------- */
+async function doAdminLogin(){
+  const email = document.getElementById('admin-user').value.trim();
+  const password = document.getElementById('admin-pass').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ showToast('E-mail ou senha incorretos.'); return; }
+  showToast('Login realizado ✅');
+  await Promise.all([loadBusinesses(), loadPending()]);
+  renderAdminPanel();
+  showScreen('screen-admin-panel');
+}
+
+function renderAdminPanel(){
+  const ativas = BUSINESSES.filter(b=>b.status==='ativo');
+  const vencendo = ativas.filter(b=>{ const d = daysUntil(b.dueDate); return !b.paid || (d!==null && d<=7); });
+  document.getElementById('stat-ativas').textContent = ativas.length;
+  document.getElementById('stat-vencendo').textContent = vencendo.length;
+  document.getElementById('stat-pendentes').textContent = pendingCompanies.length;
+  document.getElementById('pending-count').textContent = pendingCompanies.length;
+  document.getElementById('active-count').textContent = ativas.length;
+
+  /* cadastros pendentes (vindos do formulário público) */
+  const pendWrap = document.getElementById('pending-list');
+  pendWrap.innerHTML = '';
+  if(pendingCompanies.length===0){
+    pendWrap.innerHTML = '<div class="empty">Nenhum cadastro novo. Assim que alguém enviar "Cadastre sua empresa", aparece aqui. 📥</div>';
+  } else {
+    pendingCompanies.slice().reverse().forEach(c=>{
+      const card = document.createElement('div');
+      card.className = 'pending-card';
+      card.innerHTML = `
+        <div class="pending-top">
+          <div class="pending-head">
+            <div class="pending-thumb">🆕</div>
+            <div><div class="pending-name">${c.name}</div>
+            <div class="pending-meta">${c.categoryText} · ${CITIES[c.city].name}</div>
+            <div class="pending-meta">${c.addr||'sem endereço'} ${c.wa?'· '+c.wa:''}</div></div>
+          </div>
+          <div class="pending-status pendente">NOVO</div>
+        </div>
+        <div class="pending-controls">
+          <button class="pending-btn go" onclick="approvePending(${c.id})">Aprovar e ativar</button>
+          <button class="pending-btn danger" onclick="rejectPending(${c.id})">Recusar</button>
+        </div>`;
+      pendWrap.appendChild(card);
+    });
+  }
+
+  /* empresas ativas */
+  const listWrap = document.getElementById('active-list');
+  listWrap.innerHTML = '';
+  if(ativas.length===0){
+    listWrap.innerHTML = '<div class="empty">Nenhuma empresa cadastrada ainda.</div>';
+  } else {
+    ativas.slice().sort((a,b)=>{
+      const da = daysUntil(a.dueDate), db = daysUntil(b.dueDate);
+      return (da===null?999:da) - (db===null?999:db);
+    }).forEach(b=>{
+      const d = daysUntil(b.dueDate);
+      let cls = '', warn = '';
+      if(!b.paid || (d!==null && d<0)){ cls='overdue'; warn = d!==null && d<0 ? `⚠️ Venceu há ${Math.abs(d)} dia(s)` : '⚠️ Pagamento em aberto'; }
+      else if(d!==null && d<=7){ cls='duesoon'; warn = `⏰ Vence em ${d} dia(s)`; }
+      const card = document.createElement('div');
+      card.className = 'pending-card ' + cls;
+      card.innerHTML = `
+        <div class="pending-top">
+          <div class="pending-head">
+            <div class="pending-thumb">${avatarHtml(b)}</div>
+            <div><div class="pending-name">${b.name}</div>
+            <div class="pending-meta">${catInfo(b.category).emoji} ${catInfo(b.category).label} · ${CITIES[b.city].name}</div>
+            ${warn ? `<div class="due-warning">${warn}</div>` : ''}</div>
+          </div>
+          <div class="pending-status ${b.paid?'pago':'naopago'}" onclick="togglePaid(${b.id})">${b.paid?'PAGO':'NÃO PAGO'}</div>
+        </div>
+        <div class="pending-controls">
+          <select onchange="updateBiz(${b.id}, 'plan', this.value)">
+            <option ${b.plan==='Básico'?'selected':''}>Básico</option>
+            <option ${b.plan==='Premium'?'selected':''}>Premium</option>
+          </select>
+          <input type="date" value="${b.dueDate||''}" onchange="updateBiz(${b.id}, 'dueDate', this.value)">
+          <button class="pending-btn ghost" onclick="openAdminEdit(${b.id})">Editar</button>
+        </div>`;
+      listWrap.appendChild(card);
+    });
+  }
+}
+async function togglePaid(id){
+  const b = BUSINESSES.find(x=>x.id===id); if(!b) return;
+  const { error } = await sb.from('businesses').update({ paid: !b.paid }).eq('id', id);
+  if(error){ console.error(error); showToast('Erro ao atualizar pagamento.'); return; }
+  await loadBusinesses();
+  renderAdminPanel();
+}
+async function updateBiz(id, field, value){
+  const dbField = { dueDate:'due_date', plan:'plan' }[field] || field;
+  const { error } = await sb.from('businesses').update({ [dbField]: value || null }).eq('id', id);
+  if(error){ console.error(error); showToast('Erro ao salvar alteração.'); return; }
+  await loadBusinesses();
+  renderAdminPanel();
+}
+
+async function approvePending(id){
+  const c = pendingCompanies.find(x=>x.id===id);
+  if(!c) return;
+  const matched = CATEGORIES.find(cat=> c.categoryText.toLowerCase().includes(cat.label.toLowerCase().split(' ')[0].toLowerCase()));
+  const cityRef = CITIES[c.city];
+  const newBiz = {
+    name:c.name, city:c.city, category: matched?matched.slug:'outros',
+    addr:c.addr, lat:cityRef.lat, lng:cityRef.lng, wa:c.wa, ig:c.ig,
+    delivery:c.delivery, fee:c.fee, menu:c.menu, photo:c.photo||'',
+    paid:false, dueDate:'', plan:'Básico', status:'ativo'
+  };
+  const { error: insErr } = await sb.from('businesses').insert(appToDb(newBiz));
+  if(insErr){ console.error(insErr); showToast('Erro ao ativar empresa.'); return; }
+  const { error: delErr } = await sb.from('pending_signups').delete().eq('id', id);
+  if(delErr) console.error(delErr);
+  await Promise.all([loadBusinesses(), loadPending()]);
+  renderAdminPanel();
+  showToast(`${c.name} foi ativada! Ajuste categoria/foto/vencimento em "Editar".`);
+}
+async function rejectPending(id){
+  const { error } = await sb.from('pending_signups').delete().eq('id', id);
+  if(error){ console.error(error); showToast('Erro ao recusar cadastro.'); return; }
+  await loadPending();
+  renderAdminPanel();
+}
+
+/* ---------------- admin: adicionar/editar empresa ---------------- */
+function fillCategorySelect(){
+  const sel = document.getElementById('ed-category');
+  sel.innerHTML = CATEGORIES.map(c=>`<option value="${c.slug}">${c.emoji} ${c.label}</option>`).join('');
+}
+function openAdminEdit(id){
+  fillCategorySelect();
+  editingId = id;
+  const deleteBtn = document.getElementById('ed-delete-btn');
+  if(id){
+    const b = BUSINESSES.find(x=>x.id===id);
+    document.getElementById('edit-title').textContent = 'Editar empresa';
+    document.getElementById('ed-name').value = b.name;
+    document.getElementById('ed-city').value = b.city;
+    document.getElementById('ed-category').value = b.category;
+    document.getElementById('ed-addr').value = b.addr||'';
+    document.getElementById('ed-wa').value = b.wa||'';
+    document.getElementById('ed-ig').value = b.ig||'';
+    document.getElementById('ed-photo').value = b.photo||'';
+    document.getElementById('ed-delivery').value = typeof b.delivery==='boolean' ? (b.delivery?'sim':'nao') : '';
+    document.getElementById('ed-fee').value = b.fee||'';
+    document.getElementById('ed-menu').value = b.menu||'';
+    document.getElementById('ed-plan').value = b.plan||'Básico';
+    document.getElementById('ed-paid').value = b.paid ? 'sim':'nao';
+    document.getElementById('ed-due').value = b.dueDate||'';
+    deleteBtn.style.display = 'block';
+    if(b.photo) showPhotoPreview('ed', b.photo); else hidePhotoPreview('ed');
+  } else {
+    document.getElementById('edit-title').textContent = 'Nova empresa';
+    ['ed-name','ed-addr','ed-wa','ed-ig','ed-photo','ed-fee','ed-menu','ed-due'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('ed-city').value = 'cajamar';
+    document.getElementById('ed-category').value = 'farmacia';
+    document.getElementById('ed-delivery').value = '';
+    document.getElementById('ed-plan').value = 'Básico';
+    document.getElementById('ed-paid').value = 'nao';
+    deleteBtn.style.display = 'none';
+    hidePhotoPreview('ed');
+  }
+  showScreen('screen-admin-edit');
+}
+async function saveAdminEdit(){
+  const cityKey = document.getElementById('ed-city').value;
+  const cityRef = CITIES[cityKey];
+  const deliveryVal = document.getElementById('ed-delivery').value;
+  const data = {
+    name: document.getElementById('ed-name').value.trim() || 'Empresa sem nome',
+    city: cityKey,
+    category: document.getElementById('ed-category').value,
+    addr: document.getElementById('ed-addr').value.trim(),
+    wa: normalizeWhatsapp(document.getElementById('ed-wa').value),
+    ig: normalizeInstagram(document.getElementById('ed-ig').value),
+    photo: document.getElementById('ed-photo').value.trim(),
+    fee: document.getElementById('ed-fee').value.trim(),
+    menu: document.getElementById('ed-menu').value.trim(),
+    plan: document.getElementById('ed-plan').value,
+    paid: document.getElementById('ed-paid').value === 'sim',
+    dueDate: document.getElementById('ed-due').value,
+    status: 'ativo',
+    lat: cityRef.lat, lng: cityRef.lng
+  };
+  data.delivery = deliveryVal ? (deliveryVal==='sim') : undefined;
+
+  let error;
+  if(editingId){
+    ({ error } = await sb.from('businesses').update(appToDb(data)).eq('id', editingId));
+  } else {
+    ({ error } = await sb.from('businesses').insert(appToDb(data)));
+  }
+  if(error){ console.error(error); showToast('Erro ao salvar empresa.'); return; }
+  await loadBusinesses();
+  renderAdminPanel();
+  showScreen('screen-admin-panel');
+  showToast('Empresa salva com sucesso ✅');
+}
+async function deleteFromEdit(){
+  if(!editingId) return;
+  if(!confirm('Excluir esta empresa do Vizim?')) return;
+  const { error } = await sb.from('businesses').delete().eq('id', editingId);
+  if(error){ console.error(error); showToast('Erro ao excluir empresa.'); return; }
+  await loadBusinesses();
+  renderAdminPanel();
+  showScreen('screen-admin-panel');
+}
+
+/* ---------------- render home ---------------- */
+const CITY_ICONS = {
+  cajamar: `<svg width="38" height="38" viewBox="0 0 64 64"><ellipse cx="32" cy="57" rx="24" ry="3" fill="#FFE1CC"/><circle cx="48" cy="14" r="7" fill="#FFE9DC"/><rect x="17" y="30" width="30" height="24" rx="2" fill="url(#gOrange)"/><path d="M32 13 19 30h26L32 13Z" fill="url(#gOrangeSoft)"/><rect x="30" y="6" width="4" height="9" rx="1" fill="url(#gOrangeSoft)"/><path d="M25 38a4 5 0 0 1 8 0v10h-8V38Z" fill="#fff"/><rect x="36.5" y="36" width="6" height="6" rx="1" fill="#fff"/></svg>`,
+  santana: `<svg width="38" height="38" viewBox="0 0 64 64"><ellipse cx="32" cy="57" rx="24" ry="3" fill="#FFE1CC"/><rect x="7" y="43" width="50" height="3.5" rx="1.5" fill="url(#gOrange)"/><rect x="20" y="12" width="4" height="32" rx="1.5" fill="url(#gOrangeSoft)"/><rect x="40" y="12" width="4" height="32" rx="1.5" fill="url(#gOrangeSoft)"/><g stroke="url(#gOrange)" stroke-width="1.6" stroke-linecap="round"><path d="M22 12 10 34"/><path d="M22 16 14 34"/><path d="M22 12 34 34"/><path d="M42 12 30 34"/><path d="M42 12 54 34"/></g></svg>`,
+  colinas: `<svg width="38" height="38" viewBox="0 0 64 64"><ellipse cx="32" cy="57" rx="24" ry="3" fill="#FFE1CC"/><rect x="16" y="26" width="14" height="28" rx="1.5" fill="url(#gOrangeSoft)"/><rect x="28" y="14" width="18" height="40" rx="1.5" fill="url(#gOrange)"/><rect x="44" y="30" width="12" height="24" rx="1.5" fill="url(#gOrangeSoft)"/><g fill="#fff"><rect x="19" y="30" width="3" height="3"/><rect x="24" y="30" width="3" height="3"/><rect x="32" y="19" width="3" height="3"/><rect x="39" y="19" width="3" height="3"/><rect x="32" y="33" width="3" height="3"/></g></svg>`
+};
+function renderHome(){
+  const chipsWrap = document.getElementById('home-chips');
+  chipsWrap.innerHTML = '';
+  CATEGORIES.filter(c=>c.slug!=='outros').forEach(c=>{
+    const chip = document.createElement('div');
+    chip.className='chip'; chip.textContent = `${c.emoji} ${c.label}`;
+    chip.onclick = ()=>openCityPicker(c.slug);
+    chipsWrap.appendChild(chip);
+  });
+
+  const citiesWrap = document.getElementById('home-cities');
+  citiesWrap.innerHTML = '';
+  Object.keys(CITIES).forEach(key=>{
+    const total = BUSINESSES.filter(b=>b.city===key && b.status==='ativo').length;
+    const card = document.createElement('div');
+    card.className='city-card';
+    card.onclick = ()=>openCity(key);
+    card.innerHTML = `<div class="icon-stage">${CITY_ICONS[key]}</div>
+      <div class="city-info"><div class="city-name">${CITIES[key].name}</div><div class="city-count">${total} empresas cadastradas</div></div>
+      <div class="city-arrow">›</div>`;
+    citiesWrap.appendChild(card);
+  });
+}
+async function initApp(){
+  document.getElementById('home-cities').innerHTML = '<div class="empty">Carregando empresas...</div>';
+  await loadBusinesses();
+  renderHome();
+}
+initApp();
+
+/* busca da home: resultados em tempo real */
+const homeSearchInput = document.getElementById('home-search');
+const homeResultsBox = document.getElementById('home-search-results');
+homeSearchInput.addEventListener('input', e=>{
+  const q = e.target.value.trim().toLowerCase();
+  if(q.length < 2){ homeResultsBox.style.display='none'; return; }
+  const matches = BUSINESSES.filter(b=> b.status==='ativo' && (b.name.toLowerCase().includes(q) || catInfo(b.category).label.toLowerCase().includes(q)) );
+  if(matches.length === 0){
+    homeResultsBox.innerHTML = '<div class="search-empty">Nada encontrado por aqui ainda 😕</div>';
+  } else {
+    homeResultsBox.innerHTML = matches.slice(0,8).map(m=>`
+      <div class="search-result-item" onclick="goToResult(${m.id})">
+        <div class="sr-avatar">${avatarHtml(m)}</div>
+        <div><div class="sr-name">${m.name}</div><div class="sr-loc">${catInfo(m.category).label} · ${CITIES[m.city].name}</div></div>
+      </div>`).join('');
+  }
+  homeResultsBox.style.display = 'block';
+});
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.search-wrap')) homeResultsBox.style.display='none';
+});
+function goToResult(id){
+  const b = BUSINESSES.find(x=>x.id===id);
+  homeResultsBox.style.display = 'none';
+  homeSearchInput.value = '';
+  state.cityKey = b.city; state.catKey = b.category;
+  openDetail(id);
+}
+
+/* seletor de cidade (chips de categoria da home) */
+function openCityPicker(catSlug){
+  pendingChipCategory = catSlug;
+  document.getElementById('picker-title').textContent = `Ver "${catInfo(catSlug).label}" em qual cidade?`;
+  const listEl = document.getElementById('picker-city-list');
+  listEl.innerHTML = '';
+  Object.keys(CITIES).forEach(cityKey=>{
+    const btn = document.createElement('div');
+    btn.className = 'modal-city-btn';
+    btn.textContent = CITIES[cityKey].name;
+    btn.onclick = ()=>pickCityForChip(cityKey);
+    listEl.appendChild(btn);
+  });
+  document.getElementById('city-picker').classList.add('show');
+}
+function closeCityPicker(){ document.getElementById('city-picker').classList.remove('show'); }
+function pickCityForChip(cityKey){
+  closeCityPicker();
+  const has = BUSINESSES.some(b=>b.city===cityKey && b.category===pendingChipCategory && b.status==='ativo');
+  state.cityKey = cityKey;
+  if(has){ openCategory(pendingChipCategory); }
+  else { showToast(`Ainda não temos "${catInfo(pendingChipCategory).label}" cadastrado em ${CITIES[cityKey].name}.`); openCity(cityKey); }
+}
+
+/* toque secreto na logo (5x) abre o painel admin */
+document.getElementById('logo-tap').addEventListener('click', ()=>{
+  logoTapCount++;
+  clearTimeout(logoTapTimer);
+  logoTapTimer = setTimeout(()=>{ logoTapCount = 0; }, 1500);
+  if(logoTapCount >= 5){ logoTapCount = 0; showScreen('screen-admin'); }
+});
+</script>
+</body>
+</html>
